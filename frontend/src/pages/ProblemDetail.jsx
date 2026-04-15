@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { compilerAPI } from '../services/api'
 import { PROBLEM_DATA } from '../data/problemsData'
 import { VISUALIZATIONS } from './visualizations'
 
@@ -36,6 +38,7 @@ function CodeDisplay({ code }) {
 export default function ProblemDetail() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const problem = PROBLEM_DATA[slug]
   const [leftTab, setLeftTab] = useState('description')
   const [bottomTab, setBottomTab] = useState('testcase')
@@ -54,8 +57,14 @@ export default function ProblemDetail() {
   useEffect(() => {
     if (!problem) return
     setCode(problem.starterCode || '')
-    fetch(`${API_BASE}/submissions/${slug}`).then(r => r.json()).then(setSubmissions).catch(() => {})
-  }, [slug])
+    
+    // Fetch submissions if user is authenticated
+    if (user) {
+      compilerAPI.getSubmissions(slug)
+        .then(res => setSubmissions(res.data.submissions || []))
+        .catch(() => setSubmissions([]))
+    }
+  }, [slug, user])
 
   // Neural bg canvas
   useEffect(() => {
@@ -101,36 +110,56 @@ export default function ProblemDetail() {
   }, [leftWidth])
 
   const runCode = async () => {
-    if (!code.trim()) return
-    setRunLabel('Running...'); setBottomTab('testresult'); setTestResult(null)
+    if (!code.trim()) {
+      alert('Please write some code first')
+      return
+    }
+    if (!user) {
+      alert('Please sign in to run code')
+      return
+    }
+    
+    setRunLabel('Running...')
+    setBottomTab('testresult')
+    setTestResult(null)
+    
     try {
-      const res = await fetch(`${API_BASE}/run`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, problem_slug: slug, test_case_index: activeCaseTab }),
+      const res = await compilerAPI.run(slug, code)
+      setTestResult(res.data)
+    } catch (err) {
+      setTestResult({ 
+        status: 'error', 
+        message: err.response?.data?.detail || 'Cannot connect to backend'
       })
-      const data = await res.json()
-      setTestResult(data)
-    } catch {
-      setTestResult({ status: 'error', message: 'Cannot connect to backend. Make sure the FastAPI server is running on port 8000.' })
     }
     setRunLabel('▶ Run')
   }
 
   const submitCode = async () => {
-    if (!code.trim()) return
-    setSubmitLabel('Submitting...'); setBottomTab('testresult')
+    if (!code.trim()) {
+      alert('Please write some code first')
+      return
+    }
+    if (!user) {
+      alert('Please sign in to submit code')
+      return
+    }
+    
+    setSubmitLabel('Submitting...')
+    setBottomTab('testresult')
+    
     try {
-      const res = await fetch(`${API_BASE}/submit`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, problem_slug: slug }),
-      })
-      const data = await res.json()
+      const res = await compilerAPI.submit(slug, code)
+      const data = res.data
       setTestResult(data)
       if (data.status === 'Accepted') setSolved(true)
       setSubmissions(prev => [data, ...prev])
       setLeftTab('submissions')
-    } catch {
-      setTestResult({ status: 'error', message: 'Cannot connect to backend.' })
+    } catch (err) {
+      setTestResult({ 
+        status: 'error', 
+        message: err.response?.data?.detail || 'Cannot connect to backend'
+      })
     }
     setSubmitLabel('Submit')
   }

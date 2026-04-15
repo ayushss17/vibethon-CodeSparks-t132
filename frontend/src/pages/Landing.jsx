@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { LoginModal } from '../components/LoginModal'
+import { RegisterModal } from '../components/RegisterModal'
+import { useAuth } from '../contexts/AuthContext'
 
 // ── Animated Neural Network Background ──────────────────────────────────────
 function NeuralBg() {
@@ -135,9 +138,12 @@ const TYPED_PHRASES = ['Activation Functions', 'Gradient Descent', 'Transformers
 
 export default function Landing() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [phraseIdx, setPhraseIdx] = useState(0)
   const [displayed, setDisplayed] = useState('')
   const [typing, setTyping] = useState(true)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
 
   useEffect(() => {
     const phrase = TYPED_PHRASES[phraseIdx]
@@ -185,11 +191,60 @@ export default function Landing() {
           ))}
         </div>
         <div style={{ display:'flex', gap:8, marginLeft:'auto', alignItems:'center' }}>
-          <button className="btn-ghost" style={{ padding:'5px 16px', fontSize:13 }}>Sign In</button>
+          <button className="btn-ghost" style={{ padding:'5px 16px', fontSize:13 }}
+            onClick={() => user ? navigate('/problems') : setShowLoginModal(true)}>
+            {user ? 'Dashboard' : 'Sign In'}
+          </button>
           <button className="btn-primary" style={{ padding:'5px 16px', fontSize:13 }}
-            onClick={() => navigate('/problems')}>Get Started</button>
+            onClick={() => user ? navigate('/problems') : setShowRegisterModal(true)}>
+            {user ? 'Start Learning' : 'Get Started'}
+          </button>
         </div>
       </nav>
+
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => {
+          setShowLoginModal(false)
+          if (user) navigate('/problems')
+        }} 
+        onSwitchToRegister={() => {
+          setShowLoginModal(false)
+          setShowRegisterModal(true)
+        }} 
+      />
+
+      {/* Register Modal */}
+      <RegisterModal 
+        isOpen={showRegisterModal} 
+        onClose={() => {
+          setShowRegisterModal(false)
+          if (user) navigate('/problems')
+        }} 
+        onSwitchToLogin={() => {
+          setShowRegisterModal(false)
+          setShowLoginModal(true)
+        
+        }} 
+        onSwitchToRegister={() => {
+          setShowLoginModal(false)
+          setShowRegisterModal(true)
+        }} 
+      />
+
+      {/* Register Modal */}
+      <RegisterModal 
+        isOpen={showRegisterModal} 
+        onClose={() => {
+          setShowRegisterModal(false)
+          if (user) navigate('/problems')
+        }} 
+        onSwitchToLogin={() => {
+          setShowRegisterModal(false)
+          setShowLoginModal(true)
+        }} 
+      />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section style={{

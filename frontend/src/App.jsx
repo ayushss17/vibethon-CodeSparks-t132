@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
 import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
 import Problems from './pages/Problems'
@@ -23,5 +24,11 @@ function AppInner() {
 }
 
 export default function App() {
-  return <BrowserRouter><AppInner /></BrowserRouter>
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppInner />
+      </BrowserRouter>
+    </AuthProvider>
+  )
 }

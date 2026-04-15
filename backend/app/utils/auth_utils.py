@@ -1,21 +1,55 @@
-from datetime import datetime, timedelta
-from jose import JWTError, jwt
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+import jwt
 from passlib.context import CryptContext
+from app.config import settings
 
-SECRET_KEY = "supersecretkey"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
+# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def hash_password(password: str):
+def hash_password(password: str) -> str:
+    """Hash a password"""
     return pwd_context.hash(password)
 
-def verify_password(plain, hashed):
-    return pwd_context.verify(plain, hashed)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash"""
+    return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+# JWT Token handling
+def create_access_token(user_id: str, email: str, expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT access token"""
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+    
+    to_encode = {
+        "user_id": str(user_id),
+        "email": email,
+        "exp": expire
+    }
+    
+    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return encoded_jwt
+
+def verify_token(token: str) -> Optional[dict]:
+    """Verify JWT token and return payload"""
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise Exception("Token has expired")
+    except jwt.InvalidTokenError:
+        raise Exception("Invalid token")
+
+def extract_token_from_header(authorization: str) -> Optional[str]:
+    """Extract token from Authorization header"""
+    if not authorization:
+        return None
+    
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+    
+    return parts[1]
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
